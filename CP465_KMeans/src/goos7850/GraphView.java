@@ -10,27 +10,35 @@ import javax.swing.JComponent;
 @SuppressWarnings("serial")
 public class GraphView extends JComponent{
 
-	int X_PADDING = 20;
-	int Y_PADDING = 20;
+	private int X_PADDING = 20;
+	private int Y_PADDING = 20;
 	
-	int GRAPH_W = 400;
-	int GRAPH_H = 400;
-	int POINT_RAD = 3;
-	double SCALE = 1;
+	private int GRAPH_W = 400;
+	private int GRAPH_H = 400;
+	private int POINT_RAD = 3;
+	private double SCALE = 1;
 	
-	int MAX_X = 6;
-	int MAX_Y = 7;
+	private int MAX_X = 6;
+	private int MAX_Y = 7;
 	
-	int SCALENOS_OFFSET=10;
+	private int SCALENOS_OFFSET=10;
 	
-	ArrayList<Point2D> points = null;
+	private ArrayList<Point2D> points;
+	private ArrayList<KMCluster> clusters;
 	
 	public GraphView() {
 		points = new ArrayList<Point2D>();
+		clusters = new ArrayList<KMCluster>();
 	}
 	
 	public GraphView(ArrayList<Point2D> pts) {
 		points = new ArrayList<Point2D>(pts);
+		clusters = new ArrayList<KMCluster>();
+	}
+	
+	public GraphView(ArrayList<Point2D> pts, ArrayList<KMCluster> clstrs) {
+		points = new ArrayList<Point2D>(pts);
+		clusters = new ArrayList<KMCluster>(clstrs);
 	}
 	
 	public void paintComponent(Graphics g) {
@@ -44,6 +52,14 @@ public class GraphView extends JComponent{
 		g.setColor(Color.RED);
 		for(Point2D point: points) {
 			drawPoint(point.getX(),point.getY(), g);
+		}
+		
+		g.setColor(Color.GREEN);
+		Point2D p;
+		for(KMCluster cluster: clusters) {
+			p = cluster.getCenter();
+			drawPoint(p.getX(),p.getY(),g);
+			drawCluster(cluster, g);
 		}
 	}
 	
@@ -76,5 +92,17 @@ public class GraphView extends JComponent{
 		int newX = (int) ((x/(double)MAX_X)*(GRAPH_W)) + X_PADDING;
 		int newY = GRAPH_H+Y_PADDING - (int)((y/(double)MAX_Y)*(GRAPH_H));
 		g.fillOval(newX-POINT_RAD, newY-POINT_RAD, POINT_RAD*2, POINT_RAD*2);
+	}
+	
+	private void drawCluster(KMCluster clstr, Graphics g) {
+		Point2D center = clstr.getCenter();
+		double radius = clstr.getRadius();
+		double modelCornerX = center.getX()-radius;
+		double modelCornerY = center.getY()+radius;
+		int newX = (int) ((modelCornerX/(double)MAX_X)*(GRAPH_W)) + X_PADDING;
+		int newY = GRAPH_H+Y_PADDING - (int) ((modelCornerY/(double)MAX_Y)*(GRAPH_H));
+		int width = (int) ((radius*2/(double)MAX_X)*(GRAPH_W));
+		int height = (int) ((radius*2/(double)MAX_Y)*(GRAPH_H));
+		g.drawOval(newX, newY, width, height);
 	}
 }
