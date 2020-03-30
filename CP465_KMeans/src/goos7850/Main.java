@@ -41,6 +41,9 @@ public class Main {
 		c.addPoint(points.get(5));
 		clusters.add(c);
 		
+		System.out.println("Variance C1: "+clusters.get(0).getVariance());
+		System.out.println("Variance C2: "+clusters.get(1).getVariance());
+		
 		JFrame f = new JFrame("Test");
 		f.setSize(700,500);
 		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
