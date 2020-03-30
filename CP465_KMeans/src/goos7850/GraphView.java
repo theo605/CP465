@@ -13,7 +13,7 @@ public class GraphView extends JComponent{
 	private int X_PADDING = 20;
 	private int Y_PADDING = 20;
 	
-	private int GRAPH_W = 400;
+	private int GRAPH_W = 600;
 	private int GRAPH_H = 400;
 	private int POINT_RAD = 3;
 	private double SCALE = 1;
@@ -57,8 +57,15 @@ public class GraphView extends JComponent{
 		g.setColor(Color.GREEN);
 		Point2D p;
 		for(KMCluster cluster: clusters) {
-			p = cluster.getCenter();
+			p = cluster.getCentroid();
 			drawPoint(p.getX(),p.getY(),g);
+			
+		}
+		
+		g.setColor(Color.BLACK);
+		for(KMCluster cluster: clusters) {
+			p = cluster.getCenter();
+			drawPoint(p.getX(),p.getY(), g);
 			drawCluster(cluster, g);
 		}
 	}

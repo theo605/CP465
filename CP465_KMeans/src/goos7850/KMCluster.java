@@ -17,14 +17,35 @@ public class KMCluster {
 	public void addPoint(Point2D p) {
 		points.add(p);
 	}
-	
-	public Point2D getCenter() {
+	/**
+	 * For CALCULATIONS
+	 * @return
+	 */
+	public Point2D getCentroid() {
 		double xSum=0, ySum=0;
 		for(Point2D point: points) {
 			xSum+=point.getX();
 			ySum+=point.getY();
 		}
 		return new Point2D.Double(xSum/points.size(), ySum/points.size());
+	}
+	/**
+	 * for GRAPHING
+	 * @return
+	 */
+	public Point2D getCenter() {
+		double minX, maxX, minY, maxY;
+		Point2D p = points.get(0);
+		minX = p.getX(); maxX = p.getX();
+		minY = p.getY(); maxY = p.getY();
+		for(int i=1; i<points.size(); i++) {
+			p = points.get(i);
+			if(p.getX()<minX) minX = p.getX();
+			if(p.getY()<minY) minY = p.getY();
+			if(p.getX()>maxX) maxX = p.getX();
+			if(p.getX()>maxY) maxY = p.getY();
+		}
+		return new Point2D.Double((minX+maxX)/2, (minY+maxY)/2);
 	}
 	
 	public double getRadius() {
@@ -43,6 +64,6 @@ public class KMCluster {
 	}
 	
 	public String toString() {
-		return points+", center="+this.getCenter();
+		return points+", center="+this.getCentroid();
 	}
 }

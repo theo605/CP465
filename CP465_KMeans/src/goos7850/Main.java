@@ -42,7 +42,7 @@ public class Main {
 		clusters.add(c);
 		
 		JFrame f = new JFrame("Test");
-		f.setSize(500,500);
+		f.setSize(700,500);
 		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		f.setContentPane(new GraphView(points, clusters));
 		f.setVisible(true);
