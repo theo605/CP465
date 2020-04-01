@@ -32,7 +32,7 @@ public class Main {
 		String ITEMNAME = "Description";
 		String TRANS_ID = "Invoice";
 		
-		double MIN_SUPPORT = 0.04;
+		double MIN_SUPPORT = 0.05;
 		
 		String address;
 		String username="root";
@@ -75,7 +75,8 @@ public class Main {
 				s.close();
 			}
 			
-			DatabaseFields df = new DatabaseFields(TRANS_TABLE, ITEM_ID, ITEMNAME, TRANS_ID);		
+			DatabaseFields df = new DatabaseFields(TRANS_TABLE, ITEM_ID, ITEMNAME, TRANS_ID);
+			System.out.println("Running Apriori algorithm...");
 			ArrayList<SupportPair> pairs = AprioriAlgorithm.generateFrequentItemsets(MIN_SUPPORT, connect, df);
 
 			for(SupportPair pair: pairs) {

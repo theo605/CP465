@@ -3,6 +3,11 @@ package goos7850;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -11,6 +16,71 @@ import javax.swing.JFrame;
 
 public class Main {
 	public static void main(String[] args) {
+		/**
+		 * Start import implementation
+		 */
+		String setGlobalTrue = "SET GLOBAL local_infile=true;";
+		String setGlobalFalse = "SET GLOBAL local_infile=false;";
+		String dropTable = "DROP TABLE tumors;";
+		// Fields in table should match up to those in the file
+		String makeTable = "CREATE TABLE tumors ( Radius DECIMAL(4, 2), Texture DECIMAL(4,2) );";
+
+		
+		String address;
+		String username="root";
+		String password;
+		String database;
+		String answeryn;		
+		
+		String localDir = doubledSlashes(System.getProperty("user.dir"));
+
+		
+		Scanner input = new Scanner(System.in);
+		System.out.print("Server Address: ");
+		address = input.nextLine();
+		//TODO: Password masking
+		System.out.print("Root Password: ");
+		password = input.nextLine();
+		System.out.print("Database Name: ");
+		database = input.nextLine();
+		// Generated using HeidiSQL
+		String loadQuery = "LOAD DATA LOW_PRIORITY LOCAL INFILE '"+localDir+"\\\\tumors.csv' "
+				+ "REPLACE INTO TABLE `"+database+"`.`tumors` CHARACTER SET utf8 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY "
+				+ "'\"' LINES TERMINATED BY '\\r\\n' (@ColVar0, @ColVar1) SET `Radius` = REPLACE(REPLACE(@ColVar0, ',', ''), '.', '.'), "
+				+ "`Texture` = REPLACE(REPLACE(@ColVar1, ',', ''), '.', '.');";
+		Connection connect;
+		try {
+			connect = DriverManager.getConnection("jdbc:mysql://"+address+"/"+database+"?allowLoadLocalInfile=true",username,password);
+	
+			System.out.println("Connection Successful!");
+			
+			answeryn="";
+			while(!(answeryn.equals("y")||answeryn.equals("n"))) {
+				System.out.print("Do you need to import the dataset to the database? (y/n) ");
+				answeryn = input.nextLine();
+			}
+			input.close();
+			if(answeryn.equals("y")) {
+				Statement s = connect.createStatement();
+				if(hasTumorsTable(s)) {
+					s.executeUpdate(dropTable);
+					System.out.println("Dropped table: tumors");
+				}
+				s.executeUpdate(makeTable);
+				System.out.println("Created table: tumors");
+				s.executeUpdate(setGlobalTrue);
+				s.executeQuery(loadQuery);
+				System.out.println("Loaded table: tumors");
+				s.executeUpdate(setGlobalFalse);
+				s.close();
+			}
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		/**
+		 * End import implementation
+		 */
 		ArrayList<Point2D> points = new ArrayList<Point2D>();
 		ArrayList<KMCluster> clusters = new ArrayList<KMCluster>();
 		
@@ -28,7 +98,9 @@ public class Main {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+		/**
+		 * End import
+		 */
 		
 		int k=points.size()/3;
                 
@@ -104,5 +176,26 @@ public class Main {
 		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		f.setContentPane(new GraphView(points, clusters));
 		f.setVisible(true);
+	}
+	
+	
+	private static boolean hasTumorsTable(Statement s) throws SQLException {
+		boolean res = false;
+		ResultSet r = s.executeQuery("SHOW TABLES;");
+		while(r.next()) {
+			if(r.getString(1).equals("tumors")) res = true;
+		}
+		r.close();
+		return res;
+	}
+	
+	private static String doubledSlashes(String str) {
+		String res="";
+		String[] pathArray = str.split("\\\\");
+		for(int i=0; i<=pathArray.length-2;i++) {
+			res = res + pathArray[i] + "\\\\";
+		}
+		res = res + pathArray[pathArray.length-1];
+		return res;
 	}
 }
