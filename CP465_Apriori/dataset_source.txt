@@ -1,0 +1,1 @@
+Dr. Daqing Chen, Course Director: MSc Data Science. chend '@' lsbu.ac.uk, School of Engineering, London South Bank University, London SE1 0AA, UK., https://archive.ics.uci.edu/ml/datasets/Online+Retail+II
