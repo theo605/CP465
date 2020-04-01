@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.Scanner;
 
 import javax.swing.JFrame;
@@ -28,19 +29,73 @@ public class Main {
 			e.printStackTrace();
 		}
 		
-		KMCluster c;
-		c = new KMCluster();
-		c.addPoint(points.get(0));
-		c.addPoint(points.get(2));
-		clusters.add(c);
 		
-		c = new KMCluster();
-		c.addPoint(points.get(1));
-		c.addPoint(points.get(3));
-		c.addPoint(points.get(4));
-		c.addPoint(points.get(5));
-		clusters.add(c);
-		
+		int k=points.size()/3;
+                
+		//select cluster centers
+		Random r;
+		int index;
+		boolean selected;
+		ArrayList<Integer> centers= new ArrayList<Integer>();
+		for (int i=0;i<k;i++) {
+			selected = false;
+			while (selected==false) {
+				r = new Random();
+				index = r.nextInt(k + 1);
+                               
+				if (!centers.contains(index)) {
+					centers.add(index);
+					selected = true;
+				}
+			}
+		}
+              
+		KMCluster c = new KMCluster();
+		for (int i=0;i<k;i++) {
+			c = new KMCluster(points.get(centers.get(i)));
+			clusters.add(c);
+		}
+		double closestDist;
+		int closest;
+		Point2D point;
+                //assign points
+		for (int i=0;i<points.size();i++) {
+			point = points.get(i);
+			closest=0;
+                        //System.out.print(clusters.size());
+			closestDist=clusters.get(0).distanceFromCenter(point);
+			//find closest cluster
+			for (int j=0;j<k;j++) {
+				if(clusters.get(j).distanceFromCenter(point)<closestDist) {
+					closest=j;
+					closestDist=clusters.get(0).distanceFromCenter(point);
+				}
+			}
+			clusters.get(closest).addPoint(point);
+		}
+	
+		for (int i=0;i<5; i++){
+                    //recalculate centers
+                    for (int j=0;j<clusters.size(); j++){
+                        clusters.get(j).setCenter();
+                        clusters.get(j).clearPoints();
+                    }
+                    //assign points
+                    for (int j=0;j<points.size();j++) {
+			point = points.get(j);
+			closest=0;
+                        //System.out.print(clusters.size());
+			closestDist=clusters.get(0).distanceFromCenter(point);
+			//find closest cluster
+			for (int m=0;m<k;m++) {
+				if(clusters.get(m).distanceFromCenter(point)<closestDist) {
+					closest=m;
+					closestDist=clusters.get(0).distanceFromCenter(point);
+				}
+			}
+			clusters.get(closest).addPoint(point);
+		}
+                }
 		System.out.println("Variance C1: "+clusters.get(0).getVariance());
 		System.out.println("Variance C2: "+clusters.get(1).getVariance());
 		
