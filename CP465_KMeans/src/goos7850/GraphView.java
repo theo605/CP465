@@ -17,12 +17,14 @@ public class GraphView extends JComponent{
 	private int X_PADDING = 20;
 	private int Y_PADDING = 20;
 	// Graph dimensions
-	private int GRAPH_W = 600;
-	private int GRAPH_H = 400;
+	private int GRAPH_W = 1100;
+	private int GRAPH_H = 900;
 	// Maximum values for x and y-axes. 
 	//TODO: Implement scale variable, to allow skips b/w numbers presented on axes.
-	private int MAX_X = 6;
-	private int MAX_Y = 7;
+	private int MAX_X = 100;
+	private int MAX_Y = 100;
+        private int MIN_X = 100;
+	private int MIN_Y = 100;
 	// Offset for the numbers presented on the axes.
 	private int SCALENOS_OFFSET=10;
 	// Radius of the points on the graph. 
@@ -57,6 +59,25 @@ public class GraphView extends JComponent{
 	public GraphView(ArrayList<Point2D> pts, ArrayList<KMCluster> clstrs) {
 		points = new ArrayList<Point2D>(pts);
 		clusters = new ArrayList<KMCluster>(clstrs);
+	}
+        /**
+	 * Builds the view of the graph with both points and their clusters. (Points in the ArrayList should 
+	 * be partitioned completely into the clusters).
+	 * @param pts: An ArrayList of Point2D objects to place on the graph.
+	 * @param clstrs: An ArrayList of KMCluster objects to place on the graph. Refer to KMCluster.java.
+         * @param minX: smallest x value
+	 * @param maxX: 
+         * @param minY: 
+         * @param maxY: 
+	 */
+	public GraphView(ArrayList<Point2D> pts, ArrayList<KMCluster> clstrs, double minX, double maxX, double minY, double maxY) {
+		points = new ArrayList<Point2D>(pts);
+		clusters = new ArrayList<KMCluster>(clstrs);
+                MAX_X=(int)maxX+1;
+                MAX_Y=(int)maxY+1;
+                MIN_X=(int)maxX+1;
+                MIN_Y=(int)maxY+1;
+               
 	}
 	/**
 	 * Draws out the graph.

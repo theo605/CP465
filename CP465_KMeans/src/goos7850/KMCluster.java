@@ -89,7 +89,8 @@ public class KMCluster {
 	 */
 	public Point2D setCenter() {
 		double minX, maxX, minY, maxY;
-		Point2D p = points.get(0);
+                if (points.size()>0){
+                    Point2D p = points.get(0);
 		minX = p.getX(); maxX = p.getX();
 		minY = p.getY(); maxY = p.getY();
 		for(int i=1; i<points.size(); i++) {
@@ -101,6 +102,9 @@ public class KMCluster {
 		}
 		this.center=new Point2D.Double((minX+maxX)/2, (minY+maxY)/2);
 		return new Point2D.Double((minX+maxX)/2, (minY+maxY)/2);
+                }
+                return this.center;
+		
 	}
 	/**
 	 * Gives the center of this cluster. Useful for graphing the cluster on an XY-plane.
@@ -116,7 +120,7 @@ public class KMCluster {
 	 * @return: The minimum radius needed to enclose all the points in the cluster.
 	 */
 	public double getRadius() {
-		Point2D center = this.getCenter();
+		
 		double maxRad = 0;
 		for(Point2D point: points) {
 			if(maxRad < distance(center, point)) {
