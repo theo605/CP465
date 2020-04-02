@@ -15,7 +15,61 @@ import java.sql.Statement;
  * Class provides an implementation of the Apriori algorithm for mining frequent itemsets within a database.
  */
 public class AprioriAlgorithm {
+	public static void printAssociations(ArrayList<SupportPair> freqItemsets, Connection c, DatabaseFields df) throws SQLException {
+		int noTransactions;
+		
+		try {
+			Statement s = c.createStatement();
+			ResultSet r  = s.executeQuery("SELECT COUNT(DISTINCT "+df.getTIDAttrName()+") FROM "+df.getTransactionsTableName()+";");
+			r.next(); noTransactions = r.getInt(1);
+			r.close();
+			s.close();		
+			ArrayList<Association> associations;
+			System.out.println("---------------------------");
+			for(SupportPair pair: freqItemsets) {
+				if(pair.getItems().size()>1) {
+					System.out.println("Itemset: "+pair.idToNames(c, df));
+					associations = generateRules(pair.getItems(), pair.getSupport(), noTransactions, c, df);
+					for(Association rule: associations) {
+						System.out.println(rule);
+						System.out.println();
+					}
+					System.out.println("---------------------------");
+				}
+			
+		}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
+
+	}
+	private static ArrayList<Association> generateRules(Set<String> itemset,int sup, int noTransactions, Connection c, DatabaseFields df){
+		ArrayList<Association> res = new ArrayList<Association>();
+		Set<String> emptySet = new HashSet<String>();
+		generateRulesAux(res, itemset, emptySet, sup, noTransactions, c, df);
+		return new ArrayList<Association>(res);
+	}
 	
+	private static void generateRulesAux(ArrayList<Association> result, Set<String> predicate, Set<String> preposition,int sup, int noTransactions, Connection c, DatabaseFields df) {
+		if(!predicate.isEmpty()) {
+			Set<String> pred;
+			Set<String> prep;
+			Association a;
+			for(String item: predicate) {
+				prep = new HashSet<String>(preposition);
+				pred = new HashSet<String>(predicate);
+				prep.add(item);
+				pred.remove(item);
+				a = new Association(prep, pred, sup, noTransactions, c, df);
+				if(!pred.isEmpty() && !result.contains(a)) result.add(a);
+				generateRulesAux(result, pred, prep, sup, noTransactions, c, df);
+			}
+		}
+	}
 	/**
 	 * ArrayList<SupportPair> generateFrequentItemsets(double support, Connection connect, DatabaseFields df) 
 	 * @param support: Minimum support% of the itemsets mined (freq(itemset)/size of database > support => accepted itemset).

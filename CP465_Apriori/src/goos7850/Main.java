@@ -1,5 +1,6 @@
 package goos7850;
 
+import java.io.Console;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -7,9 +8,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Scanner;
-
-public class Main {
 	
+/**
+ * Program that executes the Apriori algorithm on the particular dataset in this project. Since MySQL is 
+ * required, There is functionality included on execution to load the dataset into a MySQL database. 
+ * To run this program, a MySQL server needs to be running with a database to load the data in to. 
+ * Root access is required.
+ */
+public class Main {
+
 	public static void main(String[] args) {
 		String setGlobalTrue = "SET GLOBAL local_infile=true;";
 		String setGlobalFalse = "SET GLOBAL local_infile=false;";
@@ -18,13 +25,7 @@ public class Main {
 		String makeTable = "CREATE TABLE transactions ( Invoice VARCHAR(8), StockCode VARCHAR(20), "
 				+ "Description VARCHAR(255), Quantity INT, InvoiceDate DATE, Price DECIMAL, CustomerID VARCHAR(10), "
 				+ "Country VARCHAR(32) );";
-		String localDir = doubledSlashes(System.getProperty("user.dir"));
-		// Generated using HeidiSQL
-		String loadQuery = "LOAD DATA LOW_PRIORITY LOCAL INFILE '"+localDir+"\\\\data.csv' REPLACE INTO"
-				+ " TABLE `import_test`.`transactions` CHARACTER SET utf8 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY "
-				+ "'\"' LINES TERMINATED BY '\\r\\n' IGNORE 1 LINES (`Invoice`, `StockCode`, `Description`, @ColVar3, "
-				+ "`InvoiceDate`, @ColVar5, `CustomerID`, `Country`) SET `Quantity` = REPLACE(REPLACE(@ColVar3, ',', ''),"
-				+ " '.', '.'), `price` = REPLACE(REPLACE(@ColVar5, ',', ''), '.', '.');";
+
 
 		
 		String TRANS_TABLE = "transactions";
@@ -34,21 +35,38 @@ public class Main {
 		
 		double MIN_SUPPORT = 0.05;
 		
+		/**
+		 * CSV Import implementation
+		 */
 		String address;
 		String username="root";
 		String password;
 		String database;
 		String answeryn;
+		double supp;
+		
+		Console console = System.console();
 		
 		Scanner input = new Scanner(System.in);
 		System.out.print("Server Address: ");
 		address = input.nextLine();
-		//TODO: Password masking
+
 		System.out.print("Root Password: ");
-		password = input.nextLine();
+		if(console==null) { 
+			password = input.nextLine();
+		}else {
+			char[] passArray = console.readPassword();
+			password = new String(passArray);
+		}
 		System.out.print("Database Name: ");
 		database = input.nextLine();
-		
+		String localDir = doubledSlashes(System.getProperty("user.dir"));
+		// Generated using HeidiSQL
+		String loadQuery = "LOAD DATA LOW_PRIORITY LOCAL INFILE '"+localDir+"\\\\data.csv' REPLACE INTO"
+				+ " TABLE `"+database+"`.`transactions` CHARACTER SET utf8 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY "
+				+ "'\"' LINES TERMINATED BY '\\r\\n' IGNORE 1 LINES (`Invoice`, `StockCode`, `Description`, @ColVar3, "
+				+ "`InvoiceDate`, @ColVar5, `CustomerID`, `Country`) SET `Quantity` = REPLACE(REPLACE(@ColVar3, ',', ''),"
+				+ " '.', '.'), `price` = REPLACE(REPLACE(@ColVar5, ',', ''), '.', '.');";
 		
 		try {
 			Connection connect = DriverManager.getConnection("jdbc:mysql://"+address+"/"+database+"?allowLoadLocalInfile=true",username,password);
@@ -59,7 +77,7 @@ public class Main {
 				System.out.print("Do you need to import the dataset to the database? (y/n) ");
 				answeryn = input.nextLine();
 			}
-			input.close();
+			
 			if(answeryn.equals("y")) {
 				Statement s = connect.createStatement();
 				if(hasTransactionTable(s)) {
@@ -74,14 +92,21 @@ public class Main {
 				s.executeUpdate(setGlobalFalse);
 				s.close();
 			}
+			/**
+			 * End Import implementation
+			 */
+			System.out.print("Minimum Support: ");
+			supp = Double.valueOf(input.nextLine());
+			
+			input.close();
 			
 			DatabaseFields df = new DatabaseFields(TRANS_TABLE, ITEM_ID, ITEMNAME, TRANS_ID);
-			System.out.println("Running Apriori algorithm...");
-			ArrayList<SupportPair> pairs = AprioriAlgorithm.generateFrequentItemsets(MIN_SUPPORT, connect, df);
-
-			for(SupportPair pair: pairs) {
-				System.out.println(pair.idToNames(connect, df));
-			}
+			System.out.println("Mining Frequent Itemsets...");
+			ArrayList<SupportPair> pairs = AprioriAlgorithm.generateFrequentItemsets(supp, connect, df);
+			System.out.println("\r\nItemsets: ");
+			for(SupportPair pair: pairs) System.out.println(pair.idToNames(connect, df));
+			System.out.println("\r\nRules: ");
+			AprioriAlgorithm.printAssociations(pairs, connect, df);
 			
 			connect.close();
 		} catch (SQLException e) {
