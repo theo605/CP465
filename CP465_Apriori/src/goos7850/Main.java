@@ -8,9 +8,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Scanner;
-
-public class Main {
 	
+/**
+ * Program that executes the Apriori algorithm on the particular dataset in this project. Since MySQL is 
+ * required, There is functionality included on execution to load the dataset into a MySQL database. 
+ * To run this program, a MySQL server needs to be running with a database to load the data in to. 
+ * Root access is required.
+ */
+public class Main {
+
 	public static void main(String[] args) {
 		String setGlobalTrue = "SET GLOBAL local_infile=true;";
 		String setGlobalFalse = "SET GLOBAL local_infile=false;";
