@@ -25,15 +25,6 @@ public class Main {
 		String makeTable = "CREATE TABLE transactions ( Invoice VARCHAR(8), StockCode VARCHAR(20), "
 				+ "Description VARCHAR(255), Quantity INT, InvoiceDate DATE, Price DECIMAL, CustomerID VARCHAR(10), "
 				+ "Country VARCHAR(32) );";
-
-
-		
-		String TRANS_TABLE = "transactions";
-		String ITEM_ID = "StockCode";
-		String ITEMNAME = "Description";
-		String TRANS_ID = "Invoice";
-		
-		double MIN_SUPPORT = 0.05;
 		
 		/**
 		 * CSV Import implementation
@@ -100,13 +91,12 @@ public class Main {
 			
 			input.close();
 			
-			DatabaseFields df = new DatabaseFields(TRANS_TABLE, ITEM_ID, ITEMNAME, TRANS_ID);
 			System.out.println("Mining Frequent Itemsets...");
-			ArrayList<SupportPair> pairs = AprioriAlgorithm.generateFrequentItemsets(supp, connect, df);
+			ArrayList<SupportPair> pairs = AprioriAlgorithm.generateFrequentItemsets(supp, connect);
 			System.out.println("\r\nItemsets: ");
-			for(SupportPair pair: pairs) System.out.println(pair.idToNames(connect, df));
+			for(SupportPair pair: pairs) System.out.println(pair.idToNames(connect));
 			System.out.println("\r\nRules: ");
-			AprioriAlgorithm.printAssociations(pairs, connect, df);
+			AprioriAlgorithm.printAssociations(pairs, connect);
 			
 			connect.close();
 		} catch (SQLException e) {

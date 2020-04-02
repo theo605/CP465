@@ -15,12 +15,12 @@ import java.sql.Statement;
  * Class provides an implementation of the Apriori algorithm for mining frequent itemsets within a database.
  */
 public class AprioriAlgorithm {
-	public static void printAssociations(ArrayList<SupportPair> freqItemsets, Connection c, DatabaseFields df) throws SQLException {
+	public static void printAssociations(ArrayList<SupportPair> freqItemsets, Connection c) throws SQLException {
 		int noTransactions;
 		
 		try {
 			Statement s = c.createStatement();
-			ResultSet r  = s.executeQuery("SELECT COUNT(DISTINCT "+df.getTIDAttrName()+") FROM "+df.getTransactionsTableName()+";");
+			ResultSet r  = s.executeQuery("SELECT COUNT(DISTINCT Invoice) FROM transactions;");
 			r.next(); noTransactions = r.getInt(1);
 			r.close();
 			s.close();		
@@ -28,8 +28,8 @@ public class AprioriAlgorithm {
 			System.out.println("---------------------------");
 			for(SupportPair pair: freqItemsets) {
 				if(pair.getItems().size()>1) {
-					System.out.println("Itemset: "+pair.idToNames(c, df));
-					associations = generateRules(pair.getItems(), pair.getSupport(), noTransactions, c, df);
+					System.out.println("Itemset: "+pair.idToNames(c));
+					associations = generateRules(pair.getItems(), pair.getSupport(), noTransactions, c);
 					for(Association rule: associations) {
 						System.out.println(rule);
 						System.out.println();
@@ -42,19 +42,15 @@ public class AprioriAlgorithm {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
-		
-
 	}
-	private static ArrayList<Association> generateRules(Set<String> itemset,int sup, int noTransactions, Connection c, DatabaseFields df){
+	private static ArrayList<Association> generateRules(Set<String> itemset,int sup, int noTransactions, Connection c){
 		ArrayList<Association> res = new ArrayList<Association>();
 		Set<String> emptySet = new HashSet<String>();
-		generateRulesAux(res, itemset, emptySet, sup, noTransactions, c, df);
+		generateRulesAux(res, itemset, emptySet, sup, noTransactions, c);
 		return new ArrayList<Association>(res);
 	}
 	
-	private static void generateRulesAux(ArrayList<Association> result, Set<String> predicate, Set<String> preposition,int sup, int noTransactions, Connection c, DatabaseFields df) {
+	private static void generateRulesAux(ArrayList<Association> result, Set<String> predicate, Set<String> preposition,int sup, int noTransactions, Connection c) {
 		if(!predicate.isEmpty()) {
 			Set<String> pred;
 			Set<String> prep;
@@ -64,9 +60,9 @@ public class AprioriAlgorithm {
 				pred = new HashSet<String>(predicate);
 				prep.add(item);
 				pred.remove(item);
-				a = new Association(prep, pred, sup, noTransactions, c, df);
+				a = new Association(prep, pred, sup, noTransactions, c);
 				if(!pred.isEmpty() && !result.contains(a)) result.add(a);
-				generateRulesAux(result, pred, prep, sup, noTransactions, c, df);
+				generateRulesAux(result, pred, prep, sup, noTransactions, c);
 			}
 		}
 	}
@@ -79,25 +75,25 @@ public class AprioriAlgorithm {
 	 * 		associated frequency.
 	 * @throws SQLException if connection to database is lost or database parameters are incorrect.
 	 */
-	public static ArrayList<SupportPair> generateFrequentItemsets(double support, Connection connect, DatabaseFields df) throws SQLException{
+	public static ArrayList<SupportPair> generateFrequentItemsets(double support, Connection connect) throws SQLException{
 		ArrayList<SupportPair> res = new ArrayList<SupportPair>();
 		ArrayList<Set<String>> rawItemsets;
 		int n, sup;
 		
 		Statement s = connect.createStatement();
-		ResultSet r = s.executeQuery("SELECT count(DISTINCT "+df.getTIDAttrName()+") FROM "+df.getTransactionsTableName()+";");
+		ResultSet r = s.executeQuery("SELECT count(DISTINCT Invoice) FROM transactions;");
 		r.next();
 		n = r.getInt(1);
 		r.close();
 		s.close();
 		sup = (int) Math.ceil(support * ((double) n));
 		
-		ArrayList<SupportPair> pairs = generateInitialFreqItemsets(connect, df);
+		ArrayList<SupportPair> pairs = generateInitialFreqItemsets(connect);
 		prune(pairs, sup);
 		while(!pairs.isEmpty()) {	
 			res.addAll(pairs);
 			rawItemsets = joinFreqItemsets(pairs);
-			pairs = calculateSetFrequencies(rawItemsets, connect, df);
+			pairs = calculateSetFrequencies(rawItemsets, connect);
 			prune(pairs, sup);
 		}
 		return new ArrayList<SupportPair>(res);
@@ -109,10 +105,10 @@ public class AprioriAlgorithm {
 	 * @return ArrayList of SupportPair objects, containing all singleton itemsets mined from the database.
 	 * @throws SQLException if connection to database is lost or database parameters are incorrect.
 	 */
-	private static ArrayList<SupportPair> generateInitialFreqItemsets(Connection c, DatabaseFields df) throws SQLException{
+	private static ArrayList<SupportPair> generateInitialFreqItemsets(Connection c) throws SQLException{
 		ArrayList<SupportPair> res = new ArrayList<SupportPair>();	
 		Statement s = c.createStatement();
-		ResultSet r = s.executeQuery("SELECT "+df.getItemIDAttrName()+", COUNT("+df.getTIDAttrName()+") FROM "+df.getTransactionsTableName()+" GROUP BY "+df.getItemIDAttrName());
+		ResultSet r = s.executeQuery("SELECT StockCode, COUNT(Invoice) FROM transactions GROUP BY StockCode");
 		Set<String> tempSet;
 		while(r.next()) {
 			tempSet = new HashSet<String>();
@@ -185,11 +181,11 @@ public class AprioriAlgorithm {
 	 * 		ArrayList of the objects
 	 * @throws SQLException if connection to database is lost or database parameters are incorrect.
 	 */
-	private static ArrayList<SupportPair> calculateSetFrequencies(ArrayList<Set<String>> sets, Connection c, DatabaseFields df) throws SQLException{
+	private static ArrayList<SupportPair> calculateSetFrequencies(ArrayList<Set<String>> sets, Connection c) throws SQLException{
 		ArrayList<SupportPair> res = new ArrayList<SupportPair>();
 		Statement s = c.createStatement();
 		for(Set<String> set: sets) {
-			ResultSet r = s.executeQuery("SELECT count(*) FROM ("+createIntersectionQuery(set, df)+") AS T;");
+			ResultSet r = s.executeQuery("SELECT count(*) FROM ("+createIntersectionQuery(set)+") AS T;");
 			r.next();
 			res.add(new SupportPair(set, r.getInt(1)));
 			r.close();
@@ -203,12 +199,12 @@ public class AprioriAlgorithm {
 	 * @param df: Database parameters, refer to DatabaseFields.java.
 	 * @return A query for the intersection of TIDs that contain an item within the itemset.
 	 */
-	private static String createIntersectionQuery(Set<String> set, DatabaseFields df) {
+	private static String createIntersectionQuery(Set<String> set) {
 		Iterator<String> i = set.iterator();
-		String nestedQuery = "SELECT DISTINCT "+df.getTIDAttrName()+" FROM "+df.getTransactionsTableName()+" WHERE "+df.getItemIDAttrName()+"=";
+		String nestedQuery = "SELECT DISTINCT Invoice FROM transactions WHERE StockCode=";
 		String res = nestedQuery + "'"+i.next()+"'";
 		while(i.hasNext()) {
-			res = nestedQuery +"'"+ i.next()+"'" + " AND "+df.getTIDAttrName()+" IN ("+res+")";
+			res = nestedQuery +"'"+ i.next()+"'" + " AND Invoice IN ("+res+")";
 		}
 		return res;
 	}

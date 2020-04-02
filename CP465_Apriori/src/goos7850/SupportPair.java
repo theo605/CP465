@@ -48,11 +48,11 @@ public class SupportPair {
 	public int getSupport() {
 		return support;
 	}
-	public Set<String> idToNames(Connection c, DatabaseFields df) throws SQLException {
+	public Set<String> idToNames(Connection c) throws SQLException {
 		Set<String> res = new HashSet<String>();
 		Statement s = c.createStatement();
 		for(String itemID: items) {
-			ResultSet r = s.executeQuery("SELECT DISTINCT "+df.getItemNameAttrName()+" FROM "+df.getTransactionsTableName()+" WHERE "+df.getItemIDAttrName()+"='"+itemID+"';");
+			ResultSet r = s.executeQuery("SELECT DISTINCT Description FROM transactions WHERE StockCode='"+itemID+"';");
 			r.next();
 			res.add(r.getString(1));
 			r.close();
