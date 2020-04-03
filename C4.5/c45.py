@@ -1,88 +1,108 @@
 import numpy as np
-from math import log2
+import math
 import pandas as pd
+import operator as op
 
+threshold_dict = dict()
 
 class Node:
-    def __init__(self, attr, isleaf):
-        self.value = attr
-        self.children = []
-        self.isleaf = isleaf
+    def __init__(self,
+                _parent = None,
+                _children = [],
+                _infoGain = None,
+                _attribute = None,
+                _valuesTaken = {}):
+        self.parent = _parent
+        self.children = _children
+        self.infoGain = _infoGain
+        self.attribute = _attribute
+        self.valuesTaken = _valuesTaken
 
+    def addChild(self, _node = None):
+        if(_node == None):
+            _node = self.__init__()
+        self.children.append(_node)
+        return _node
+
+    def isLeaf(self):
+        return not self.children
+
+    def _printTree(self, space):
+        if(self.isLeaf()):
+            print(str(space*' ') + '<' +str(self.valuesTaken[self.parent.attribute]) + '>')
+            print(str( (4+space)*' ') + '(' +str(self.valuesTaken[self.attribute]) + ')')
+            return
+        else:
+            print(str(space*' ') + '<' +str(self.valuesTaken[self.parent.attribute]) + '>')
+            print(str((4+space)*' ') + str(self.attribute))
+            for child in self.children:
+                child._printTree(space+8)
 
 class C45:
-    def __init__(self, df):
-        self.data = df
-        self.classes = self.__get_classes(df)
-        self.attributes = self.__get_attributes(df)
-        self.root = Node('root', False)
-
-
-    def __get_classes(self, df):
-        return np.unique(df['class'])
-
+    def __init__(self, _targetAttribute = None):
+        self.attributes = self.__get_attributes(data)
+        self.targetAttribute = _targetAttribute
+        self.root = Node()
 
     def __get_attributes(self, df):
         attrs = list(df.columns)
-        attrs.remove('class')
+        del attrs[-1]
         return attrs
 
+    def getValuesInAttribute(self, data, attr):
+        return list(set(data.loc[:, attr]))
 
-    """
-    Calcualtes Entropy for a given set of labels.
-    @param: labels(array-like)
-    @return: ent(float)
-    """
-    def entropy(self, labels):
-        ent = 0
-        n_labels = len(labels)
-        # If only one or no data in the dataset, return 0
-        if n_labels <= 1:
-            return ent
+    def getValueInstance(self, data, attr, targetValue):
+        count = 0
+        for value in data.loc[:,attr]:
+            if(targetValue == value):
+                count +=1
+        return count
 
-        # list of count of unique values in labels
-        values, counts = np.unique(labels, return_counts=True)
-        # If only one unique value in dataset, return 0
-        # print('counts', counts)
-        if len(values) == 1:
-            return ent
 
-        # list of probability of each class
-        probs = counts / n_labels
-        # print('probs', probs)
-        # calculate entropy
-        for p in probs:
-            ent -= p * log2(p)
+    def entropy(self, data):
+        valueSet = self.getValuesInAttribute(data, self.targetAttribute)
+        valueMap = dict.fromkeys(valueSet, 0)
+        instances = len(data)
 
-        return ent
+        for value in data.loc[:,self.targetAttribute]:
+            valueMap[value]+=1
 
-    """
-    Calcualtes rem for a given df.
-    @param: subset(pandas DataFrame)
-    @return: rem(float)
-    """
-    def remainder(self, attr, subset):
-        rem = 0
-        attr_col = subset[attr]
-        unique_vals, counts = np.unique(attr_col, return_counts=True)
-        probs = counts / len(attr_col)
-        for i in range(len(unique_vals)):
-            # temp df to store filtered values
-            temp_df = subset[subset[attr]==unique_vals[i]]
-            local_ent = self.entropy(temp_df['class'])
-            rem += local_ent * probs[i]
-        return rem
+        entropy = 0
+        for value in valueSet:
+            entropy += -valueMap[value]/instances * math.log(valueMap[value]/instances,2)
+        return entropy
 
+    def filterDataFrame(self, data, attr, value):
+        filteredData = data
+        filteredData = filteredData[filteredData[attr] == value]
+        return filteredData
 
     """
     Calcualtes information gain for a given df
     @param: subset(DataFrame)
     @return: float
     """
-    def info_gain(self, attr, subset):
-        ent = self.entropy(subset['class'])
-        rem = self.remainder(attr, subset)
-        return ent - rem
+    def info_gain(self, data, attr):
+        gain = self.entropy(data)
+        instances = len(data)
+        for value in self.getValuesInAttribute(data, attr):
+            gain = gain - (self.getValueInstance(data, attr, value)/instances) * self.entropy(self.filterDataFrame(data, attr, value))
+        return gain
+
+    def split_info(self, data, attr):
+        valueSet = self.getValuesInAttribute(data, attr)
+        valueMap = dict.fromkeys(valueSet, 0)
+        instances = self.getManyInstances(data)
+
+        for value in data.loc[:,attr]:
+            valueMap[value] += 1
+
+        splitInfoAttr = 0
+        for value in self.getValuesInAttribute(data, attr):
+            splitInfoAttr -= valueMap[value]/instances * math.log(valueMap[value]/instances,2)
+
+        return splitInfoAttr
 
 
     """
@@ -90,106 +110,93 @@ class C45:
     @param: subset(DataFrame with only 2 columns)
     @return: gain_ratio(float)
     """
-    def gain_ratio(self, attr, subset):
-        den = self.entropy(subset[attr])
-        if den == 0:
-            return 1
-        num = self.info_gain(attr, subset)
-        gr = num / den
-        # print('num: {} den: {}'.format(num, den))
-        return gr
+    def gain_ratio(self, data, attr):
+        return self.info_gain(data, attr) / self.split_info(data, attr)
 
 
-    def pick_best_attr(self, df):
-        max_gr = -1
-        best_attr = None
+    def buildTreeInit(self, trainingSet = None):
+        self.buildTree(self.root, trainingSet, self.attributes)
 
-        for attr in self.attributes:
-            subset = df.loc[:, [attr, 'class']]
-            gr = self.gain_ratio(attr, subset)
-            if gr > max_gr:
-                max_gr = gr
-                best_attr = attr
-        return best_attr
+    def buildTree(  self,
+                    curr_node = None,
+                    trainingSet = None,
+                    attr_set = None
+                    ):
 
+        dataset = trainingSet
+        # handle pruning
+        if self.entropy(dataset) == 0.0 : # case in which we find leaf node
+            curr_node.attribute = self.targetAttribute # attribute to parent
+            try:
+                curr_node.valuesTaken[curr_node.attribute] = self.getValuesInAttribute(dataset, curr_node.attribute)[0]
+            except:
+                print("List index out of range! BECAUSE NO SUCH KIND OF ")
+                print("Dataset", dataset)
+                print("values taken", curr_node.valuesTaken.items())
+                print("curr_node", curr_node.attribute)
+                print(self.getValuesInAttribute(dataset, curr_node.attribute))
+                return
+            curr_node.children = []
+            return
+        elif not attr_set: # found outlier
+            print("Entropy not 0 but already ran out attributes")
+            curr_node.attribute = self.targetAttribute
+            curr_node.valuesTaken[curr_node.attribute] = self.mostValue(data, curr_node.attribute)
+            curr_node.children = []
+            return
 
-    def split_data_on_attribute(self, df):
+        best_node = (None, -999) # best node -> (attr, info gain val)
+        for attr in attr_set:
+            candidateIG = self.info_gain(dataset, attr)
+            if (candidateIG > best_node[1]):
+                best_node = (attr, candidateIG)
+        curr_node.attribute = best_node[0]
+        vals_set = self.getValuesInAttribute(data, best_node[0])
+        for value in vals_set:
+            temp = dict(curr_node.valuesTaken)
+            temp[best_node[0]] = value
 
-        best_attr = self.pick_best_attr(df)
+            dataset = self.filterDataFrame(trainingSet, curr_node.attribute, value)
+            if(dataset.empty):
+                continue
+            temp_attr_set = attr_set.copy()
+            temp_attr_set.remove(curr_node.attribute)
 
-        attr_col = df[best_attr]
-        unique_vals = np.unique(attr_col)
-        children_datasets = {}
-        for val in unique_vals:
-            children_datasets[val] = df[df[best_attr]==val]
-        return best_attr, children_datasets
+            next_node = curr_node.addChild(_node = Node(_parent = curr_node,
+                                    _children = [],
+                                    _valuesTaken = temp
+                                    ))
 
-
-    def is_label_classified(self, subset):
-        values = np.unique(subset['class'])
-        if len(values) == 1:
-            print(values, 'all labels classified')
-            return '[{}]'.format(values[0])
-        else:
-            return False
-    
-
-    def get_majority(self, labels):
-        values, counts = np.unique(labels, return_counts=True)
-        marj = values[np.where(counts == max(counts))][0]
-        marj = '[{}]'.format(marj)
-        print('majority is', marj)
-        return marj
-
-
-    def plant_tree(self):
-        tree = Node('Root', False)
-        usable_attrs = self.attributes
-        # df = self.data
-        if not self.data.empty:
-            tree.children = self.grow_tree(self.data, usable_attrs)
-        self.tree = tree
-
-
-    def grow_tree(self, df, usable_attrs):
-
-        children_nodes = []
-        print(usable_attrs)
-        # If df is empty
-        if df.empty:
-            return children_nodes
-
-        # If all labels have the same value
-        classified = self.is_label_classified(df)
-        if classified is not False:
-            children_nodes.append(Node(classified, True))
-
-        # If no more attributes to split
-        elif len(usable_attrs) == 0:
-            children_nodes.append(Node(self.get_majority(df['class']), True))
-
-        # If dataset can be split further
-        else:
-            best_attr, children_datasets = self.split_data_on_attribute(df)
-            usable_attrs.remove(best_attr)
-            print('BEST:', best_attr)
-            for key, subset in children_datasets.items():
-                node_attr = ':'.join([best_attr, key])
-                node = Node(node_attr, False)
-                node.children = self.grow_tree(subset, usable_attrs)
-                children_nodes.append(node)
-
-        return children_nodes
+            self.buildTree(next_node, dataset, set(temp_attr_set))
 
 
-    def print_tree(self):
-        self.__print_node(self.tree)
+    def mostValue(self, data, attr):
+        valueSet = self.getValuesInAttribute(data, attr)
+        valueMap = dict.fromkeys(valueSet, 0)
+        instances = len(data)
 
+        for value in data.loc[:,attr]:
+            valueMap[value] += 1
 
-    def __print_node(self, node, _prefix="", _last=True):
-        print(_prefix, "`- " if _last else "|- ", node.value, sep="")
-        _prefix += "   " if _last else "|  "
-        child_count = len(node.children)
-        for i, child in enumerate(node.children):
-            _last = i == (child_count - 1)
-            self.__print_node(child, _prefix, _last)
+        return max(valueMap.items(), key=op.itemgetter(1))[0]
+
+    def handleMissingValues(self, data):
+        attributes = self.getAttributesInData(data)
+        for attribute in attributes:
+            mostValueInAttribute = self.mostValue(data,attribute)
+            data.loc[data[attribute] == float('NaN'),attribute] = mostValueInAttribute 
+
+    def printTree(self):
+        print(">" + str(self.root.attribute))
+        for child in self.root.children:
+            child._printTree(space = 4)
+
+    def isNan(self, value):
+        return math.isnan(value)
+
+data = pd.read_csv("house-votes-84.csv")
+
+c45 = C45(list(data.columns)[-1])
+c45.buildTreeInit(trainingSet = data)
+
+c45.printTree()
