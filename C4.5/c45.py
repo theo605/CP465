@@ -3,18 +3,14 @@ import math
 import pandas as pd
 import operator as op
 
-threshold_dict = dict()
-
 class Node:
     def __init__(self,
                 _parent = None,
                 _children = [],
-                _infoGain = None,
                 _attribute = None,
                 _valuesTaken = {}):
         self.parent = _parent
         self.children = _children
-        self.infoGain = _infoGain
         self.attribute = _attribute
         self.valuesTaken = _valuesTaken
 
@@ -34,22 +30,23 @@ class Node:
             return
         else:
             print(str(space*' ') + '<' +str(self.valuesTaken[self.parent.attribute]) + '>')
-            print(str((4+space)*' ') + str(self.attribute))
+            print(str((4+space)*' ') + str(self.attribute)) 
             for child in self.children:
-                child._printTree(space+8)
+                child._printTree(space+4)
 
 class C45:
-    def __init__(self, _targetAttribute = None):
-        self.attributes = self.__get_attributes(data)
+    def __init__(self, _data, _targetAttribute = None):
+        self.data = _data
+        self.attributes = self.__get_attributes(_data)
         self.targetAttribute = _targetAttribute
         self.root = Node()
 
-    def __get_attributes(self, df):
+    def __get_attributes(self, df): # insert attributes into array, minus the last one which is what we're focusing on
         attrs = list(df.columns)
         del attrs[-1]
         return attrs
 
-    def getValuesInAttribute(self, data, attr):
+    def getValuesInAttribute(self, data, attr): # find all values under a single attribute
         return list(set(data.loc[:, attr]))
 
     def getValueInstance(self, data, attr, targetValue):
@@ -59,6 +56,10 @@ class C45:
                 count +=1
         return count
 
+    def filterDataFrame(self, data, attr, value):
+        filteredData = data # set filteredData to remaining dataset
+        filteredData = filteredData[filteredData[attr] == value]
+        return filteredData
 
     def entropy(self, data):
         valueSet = self.getValuesInAttribute(data, self.targetAttribute)
@@ -73,16 +74,7 @@ class C45:
             entropy += -valueMap[value]/instances * math.log(valueMap[value]/instances,2)
         return entropy
 
-    def filterDataFrame(self, data, attr, value):
-        filteredData = data
-        filteredData = filteredData[filteredData[attr] == value]
-        return filteredData
 
-    """
-    Calcualtes information gain for a given df
-    @param: subset(DataFrame)
-    @return: float
-    """
     def info_gain(self, data, attr):
         gain = self.entropy(data)
         instances = len(data)
@@ -105,11 +97,6 @@ class C45:
         return splitInfoAttr
 
 
-    """
-    Calculates information gain ratio for a given df
-    @param: subset(DataFrame with only 2 columns)
-    @return: gain_ratio(float)
-    """
     def gain_ratio(self, data, attr):
         return self.info_gain(data, attr) / self.split_info(data, attr)
 
@@ -126,7 +113,7 @@ class C45:
         dataset = trainingSet
         # handle pruning
         if self.entropy(dataset) == 0.0 : # case in which we find leaf node
-            curr_node.attribute = self.targetAttribute # attribute to parent
+            curr_node.attribute = self.targetAttribute # attribute to target
             try:
                 curr_node.valuesTaken[curr_node.attribute] = self.getValuesInAttribute(dataset, curr_node.attribute)[0]
             except:
@@ -145,29 +132,32 @@ class C45:
             curr_node.children = []
             return
 
+        # we have a non-leaf node and a non-empty attribute set, which means at this point we should split
+
         best_node = (None, -999) # best node -> (attr, info gain val)
         for attr in attr_set:
             candidateIG = self.info_gain(dataset, attr)
             if (candidateIG > best_node[1]):
                 best_node = (attr, candidateIG)
+        # find best attribute to split on
         curr_node.attribute = best_node[0]
-        vals_set = self.getValuesInAttribute(data, best_node[0])
+        vals_set = self.getValuesInAttribute(self.data, best_node[0])
         for value in vals_set:
             temp = dict(curr_node.valuesTaken)
             temp[best_node[0]] = value
 
-            dataset = self.filterDataFrame(trainingSet, curr_node.attribute, value)
+            dataset = self.filterDataFrame(trainingSet, curr_node.attribute, value) # filter dataset
             if(dataset.empty):
                 continue
             temp_attr_set = attr_set.copy()
-            temp_attr_set.remove(curr_node.attribute)
+            temp_attr_set.remove(curr_node.attribute) # remove the attribute we just split on
 
             next_node = curr_node.addChild(_node = Node(_parent = curr_node,
                                     _children = [],
                                     _valuesTaken = temp
-                                    ))
+                                    )) # add a child to the current node because we know that this is a split to a new branch
 
-            self.buildTree(next_node, dataset, set(temp_attr_set))
+            self.buildTree(next_node, dataset, set(temp_attr_set)) # recursively move down and generate subtrees
 
 
     def mostValue(self, data, attr):
@@ -180,12 +170,6 @@ class C45:
 
         return max(valueMap.items(), key=op.itemgetter(1))[0]
 
-    def handleMissingValues(self, data):
-        attributes = self.getAttributesInData(data)
-        for attribute in attributes:
-            mostValueInAttribute = self.mostValue(data,attribute)
-            data.loc[data[attribute] == float('NaN'),attribute] = mostValueInAttribute 
-
     def printTree(self):
         print(">" + str(self.root.attribute))
         for child in self.root.children:
@@ -193,10 +177,3 @@ class C45:
 
     def isNan(self, value):
         return math.isnan(value)
-
-data = pd.read_csv("house-votes-84.csv")
-
-c45 = C45(list(data.columns)[-1])
-c45.buildTreeInit(trainingSet = data)
-
-c45.printTree()
