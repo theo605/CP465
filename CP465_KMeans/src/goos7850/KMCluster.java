@@ -91,12 +91,14 @@ public class KMCluster {
 	 * @return: The centroid (center of mass) of this cluster as a Point2D object.
 	 */
 	public Point2D setCentroid() {
-		double xSum=0, ySum=0;
-		for(Point2D point: points) {
-			xSum+=point.getX();
-			ySum+=point.getY();
-		}
-                this.centroid = new Point2D.Double(xSum/points.size(), ySum/points.size());
+                if (points.size()>0){
+                    double xSum=0, ySum=0;
+                    for(Point2D point: points) {
+                            xSum+=point.getX();
+                            ySum+=point.getY();
+                    }
+                    this.centroid = new Point2D.Double(xSum/points.size(), ySum/points.size());
+                }
                 return this.centroid;
 	}
 	/**

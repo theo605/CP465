@@ -115,11 +115,14 @@ public class Main {
 			closestDist=clusters.get(0).distanceFromCentroid(point);
 			//find closest cluster
 			for (int m=0;m<k;m++) {
+                            //System.out.print(m);
 				if(clusters.get(m).distanceFromCentroid(point)<closestDist) {
 					closest=m;
-					closestDist=clusters.get(0).distanceFromCentroid(point);
+					closestDist=clusters.get(m).distanceFromCentroid(point);
+                                        
 				}
 			}
+                        //System.out.print(closestDist+"\n");
 			clusters.get(closest).addPoint(point);
 		}
                 }

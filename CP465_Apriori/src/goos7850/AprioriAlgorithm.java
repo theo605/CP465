@@ -15,6 +15,13 @@ import java.sql.Statement;
  * Class provides an implementation of the Apriori algorithm for mining frequent itemsets within a database.
  */
 public class AprioriAlgorithm {
+	/**
+	 * Prints the associations that can be made from the frequent itemsets, as wells as their support and
+	 * confidence.
+	 * @param freqItemsets: An ArrayList of the generated frequent itemsets
+	 * @param c: A MySQL connection
+	 * @throws SQLException: Connection to the database was lost.
+	 */
 	public static void printAssociations(ArrayList<SupportPair> freqItemsets, Connection c) throws SQLException {
 		int noTransactions;
 		
@@ -29,7 +36,7 @@ public class AprioriAlgorithm {
 			for(SupportPair pair: freqItemsets) {
 				if(pair.getItems().size()>1) {
 					System.out.println("Itemset: "+pair.idToNames(c));
-					associations = generateRules(pair.getItems(), pair.getSupport(), noTransactions, c);
+					associations = generateRules(pair, noTransactions, c);
 					for(Association rule: associations) {
 						System.out.println(rule);
 						System.out.println();
@@ -43,10 +50,18 @@ public class AprioriAlgorithm {
 			e.printStackTrace();
 		}
 	}
-	private static ArrayList<Association> generateRules(Set<String> itemset,int sup, int noTransactions, Connection c){
+	/**
+	 * Subroutine to help create the rules for a particular freq. itemset.
+	 * @param itemset: An itemset (SupportPair object)
+	 * @param noTransactions: Total number of transactions in the database.
+	 * @param c: A MySQL connection.
+	 * @return: An ArrayList of the associations made from this itemset.
+	 */
+	private static ArrayList<Association> generateRules(SupportPair itemset, int noTransactions, Connection c){
+		int sup = itemset.getSupport();
 		ArrayList<Association> res = new ArrayList<Association>();
 		Set<String> emptySet = new HashSet<String>();
-		generateRulesAux(res, itemset, emptySet, sup, noTransactions, c);
+		generateRulesAux(res, itemset.getItems(), emptySet, sup, noTransactions, c);
 		return new ArrayList<Association>(res);
 	}
 	
@@ -196,7 +211,6 @@ public class AprioriAlgorithm {
 	/**
 	 * String createIntersectionQuery(Set<String> set, DatabaseFields df)
 	 * @param set: An itemset.
-	 * @param df: Database parameters, refer to DatabaseFields.java.
 	 * @return A query for the intersection of TIDs that contain an item within the itemset.
 	 */
 	private static String createIntersectionQuery(Set<String> set) {
