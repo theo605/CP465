@@ -1,6 +1,4 @@
-import numpy as np
 import math
-import pandas as pd
 import operator as op
 
 class Node:
@@ -23,7 +21,8 @@ class Node:
     def isLeaf(self):
         return not self.children
 
-    def _printTree(self, space):
+    # Recursively print tree
+    def _printTree(self, space): 
         if(self.isLeaf()):
             print(str(space*' ') + '<' +str(self.valuesTaken[self.parent.attribute]) + '>')
             print(str( (4+space)*' ') + '(' +str(self.valuesTaken[self.attribute]) + ')')
@@ -41,7 +40,7 @@ class C45:
         self.targetAttribute = _targetAttribute
         self.root = Node()
 
-    def __get_attributes(self, df): # insert attributes into array, minus the last one which is what we're focusing on
+    def __get_attributes(self, df): # insert attributes into array, minus the last one the classification
         attrs = list(df.columns)
         del attrs[-1]
         return attrs
@@ -61,7 +60,8 @@ class C45:
         filteredData = filteredData[filteredData[attr] == value]
         return filteredData
 
-    def entropy(self, data):
+    # Calculate entropy of the given dataset
+    def entropy(self, data): 
         valueSet = self.getValuesInAttribute(data, self.targetAttribute)
         valueMap = dict.fromkeys(valueSet, 0)
         instances = len(data)
@@ -74,7 +74,7 @@ class C45:
             entropy += -valueMap[value]/instances * math.log(valueMap[value]/instances,2)
         return entropy
 
-
+    # use entropy function to calculate info gain
     def info_gain(self, data, attr):
         gain = self.entropy(data)
         instances = len(data)
@@ -82,6 +82,7 @@ class C45:
             gain = gain - (self.getValueInstance(data, attr, value)/instances) * self.entropy(self.filterDataFrame(data, attr, value))
         return gain
 
+    # Calculate the entropy of attributes
     def split_info(self, data, attr):
         valueSet = self.getValuesInAttribute(data, attr)
         valueMap = dict.fromkeys(valueSet, 0)
@@ -96,14 +97,15 @@ class C45:
 
         return splitInfoAttr
 
-
+    # Calculate gain ratio with info_gain and split_info (entropy) functions
     def gain_ratio(self, data, attr):
         return self.info_gain(data, attr) / self.split_info(data, attr)
 
-
+    # Initialize tree
     def buildTreeInit(self, trainingSet = None):
         self.buildTree(self.root, trainingSet, self.attributes)
 
+    # Use recursion method to generate the decision tree
     def buildTree(  self,
                     curr_node = None,
                     trainingSet = None,
@@ -159,7 +161,7 @@ class C45:
 
             self.buildTree(next_node, dataset, set(temp_attr_set)) # recursively move down and generate subtrees
 
-
+    # Find majority when there's no more decision attribute left
     def mostValue(self, data, attr):
         valueSet = self.getValuesInAttribute(data, attr)
         valueMap = dict.fromkeys(valueSet, 0)
@@ -167,13 +169,14 @@ class C45:
 
         for value in data.loc[:,attr]:
             valueMap[value] += 1
-
         return max(valueMap.items(), key=op.itemgetter(1))[0]
 
+    # Call _print_tree in Node class
     def printTree(self):
         print(">" + str(self.root.attribute))
         for child in self.root.children:
             child._printTree(space = 4)
 
+    # If value is np.nan used in pandas for missing value
     def isNan(self, value):
         return math.isnan(value)
